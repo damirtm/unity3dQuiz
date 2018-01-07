@@ -5,13 +5,24 @@
 <xmp theme="united" style="display:none;">
 # Damir Timurshin's answers to Unity Finland - Developer Quiz
 
-## Q1: Usually sumB would be better because of lower count of operations, but might work bad on some processor architectures. sumA probably works better with processor cache, but I'm not sure.
+## Q1: Usually sumB would be better because of lower count of operations, but might work bad on some processor architectures. sumA probably works better with processor cache.
 
-I expect that sumA will have 4 times more loop jumps and comparisions.
-I've verified it by exploring compiler output on x86-64 architecture (https://godbolt.org/g/9QzUGt). 
-It easy to see that sumB requires 4 data registers to store sum accumulators so if processor does have less - there will be constant spilling/filling.
-I would expect that sumA will work better with a processor cache - cache will be warmed up faster because of switching x and y variables against a common way of walking through a two dimentional array.
-Hovewer I'm not sure about it and going to refresh my knowledge. :-) Just to mention, I'm not a C++ developer, never worked with it, so I don't know how exactly compiller works.
+* I expect that sumA will have 4 times more loop jumps and comparisions. I've verified it by exploring compiler output on x86-64 architecture (https://godbolt.org/g/9QzUGt). 
+* It easy to see that sumB requires 4 data registers to store sum accumulators so if processor does have less - there will be constant spilling/filling.
+* I would expect that sumA will work better with a processor cache - cache will be warmed up faster because of switching x and y variables against a common way of walking through a two dimentional array.
+Hovewer I'm not sure about it and going to refresh my knowledge. :-)
+
+## Q2: API example seems try to be RESTfull but it is not. It is also an ill structured RPC API and works bad with proxies.
+
+* GET /users - seems good for getting all users list with probably simple filters. For complex search there should be a separate POST /users/search method.
+* POST /users/new - don't need "new" word - POST is already have semantics of a non idempotent create (ususally) operation
+* POST /users/:id/update - PUT method would be better and "update" word is useless in this case. It is generally a bad idea to use POST for update operations. As an example, because of non idempotent semantics POSTed path could be remembered by proxy as processed and all dublicate requests with same path will be rejected
+* POST /users/:id/rename - PUT or PATCH here would be better. I never use PATCH method - because some web servers and proxies do not support it. I would personally make this endpoint as PUT /users/:id/name.
+* POST /users/:id/update-timezone - looks like the previous one, just probably "update-timezone" could be replaced with "timezone".
+* DELETE /users/delete?id=:id - don't need "delete" word, id should be moved to path part as in previous methods
+* Returning HTTP/1.1 200 for errors - is bad I think (despite that Facebook do it). In any http library it is much easier to work with HTTP status codes that extract it from body. It is natural for proxies and browsers to work with status codes.
+For POST /users/ I would use 409 Conflict status code. It say clearly that operation could not be executed and error should be shown to user.
+
 </xmp>
 
 <script src="./strapdown.js"></script>
