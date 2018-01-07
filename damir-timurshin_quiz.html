@@ -5,24 +5,78 @@
 <xmp theme="united" style="display:none;">
 # Damir Timurshin's answers to Unity Finland - Developer Quiz
 
-## Q1: Usually sumB would be better because of lower count of operations, but might work bad on some processor architectures. sumA probably works better with processor cache.
+## Q1: Usually sumB would be better because of lower count of operations but might work bad on some processor architectures. sumA probably works better with processor cache.
 
-* I expect that sumA will have 4 times more loop jumps and comparisions. I've verified it by exploring compiler output on x86-64 architecture (https://godbolt.org/g/9QzUGt). 
-* It easy to see that sumB requires 4 data registers to store sum accumulators so if processor does have less - there will be constant spilling/filling.
+* I expect that sumA will have 4 times more loop jumps and comparisions than sumB. I've verified it by exploring compiler output on x86-64 architecture (https://godbolt.org/g/9QzUGt). 
+* It easy to see that sumB requires 4 data registers to store sum accumulators so if processor does have less - there will be a constant spilling/filling.
 * I would expect that sumA will work better with a processor cache - cache will be warmed up faster because of switching x and y variables against a common way of walking through a two dimentional array.
 Hovewer I'm not sure about it and going to refresh my knowledge. :-)
 
 ## Q2: API example seems try to be RESTfull but it is not. It is also an ill structured RPC API and works bad with proxies.
 
-* GET /users - seems good for getting all users list with probably simple filters. For complex search there should be a separate POST /users/search method.
-* POST /users/new - don't need "new" word - POST is already have semantics of a non idempotent create (ususally) operation
-* POST /users/:id/update - PUT method would be better and "update" word is useless in this case. It is generally a bad idea to use POST for update operations. As an example, because of non idempotent semantics POSTed path could be remembered by proxy as processed and all dublicate requests with same path will be rejected
-* POST /users/:id/rename - PUT or PATCH here would be better. I never use PATCH method - because some web servers and proxies do not support it. I would personally make this endpoint as PUT /users/:id/name.
-* POST /users/:id/update-timezone - looks like the previous one, just probably "update-timezone" could be replaced with "timezone".
-* DELETE /users/delete?id=:id - don't need "delete" word, id should be moved to path part as in previous methods
-* Returning HTTP/1.1 200 for errors - is bad I think (despite that Facebook do it). In any http library it is much easier to work with HTTP status codes that extract it from body. It is natural for proxies and browsers to work with status codes.
-For POST /users/ I would use 409 Conflict status code. It say clearly that operation could not be executed and error should be shown to user.
+* __GET /users__ - seems good for getting all users list with probably simple filters. For complex search there should be a separate POST /users/search method.
+* __POST /users/new__ - don't need "new" word - POST is already have semantics of a non idempotent create (ususally) operation
+* __POST /users/:id/update__ - PUT method would be better and "update" word is useless in this case. It is generally a bad idea to use POST for update operations. As an example, because of non idempotent semantics POSTed path could be remembered by proxy as processed and all dublicate requests with same path will be rejected
+* __POST /users/:id/rename__ - PUT or PATCH here would be better. I never use PATCH method - because some web servers and proxies do not support it. I would personally make this endpoint as PUT /users/:id/name.
+* __POST /users/:id/update-timezone__ - looks like the previous one, just probably "update-timezone" could be replaced with "timezone".
+* __DELETE /users/delete?id=:id__ - don't need "delete" word, id should be moved to path part as in previous endpoints
+* Returning __HTTP/1.1 200__ for errors - is bad I think (despite that Facebook do it). In any http library it is much easier to work with HTTP status codes than extract it from body. It is natural for proxies and browsers to work with status codes.
+For POST /users/ I would use 409 Conflict status code. It says clearly that operation could not be executed and error should be shown to user.
 
+## Q3: Salt should be randomly generated for each user and should be longer. MD5 is probably not a best choice for password hashing.
+
+* Fixed or short salt is vulnerable for table look up attaks. Then checked out the Wiki: https://en.wikipedia.org/wiki/Rainbow_table
+* Salted MD5 is a good tradeoff between performance, disk space and security but there are hash functions that have lower collision probability.
+
+## Q4: Access to user's history should be read only. getDepositHistorySum has bad signature. Storing transactions history in the user object probably not a best idea.
+
+* History is meant to be an immutable collection in read operations. For example one could copy array reference and for example sort it while reusing memory - that could break original order and lead to unexpected behaviour later.
+* getDepositHistorySum should probably be a user's object own function or accept list of deposits as a parameter. 
+It can be interpreted as voilation of single responsibility principle - if users's structure will be changed - that will lead to getDepositHistorySum change as well. 
+Also getDepositHistorySum can't no be reused for example to calcullate sum for deposits for particular group of users ot something else.
+* For some users transaction history could be pretty big. It depends on particular context but if in future there could be some performance tradeoffs.
+
+## Q5: Using name as a user id is bad. transferCredits should be transactional. 
+
+* Using user name as id is prune to collisions. There is no checks that in database there is only one John or Jane.
+* transferCredits should meet ACID requirements:
+  - A,C: If something goes wrong we don't want for John to lose money without increasing Jane's balance.
+  - I: John could send money to multiple users at the same time while having not enough money to do it.
+  - D: Nothing here but don't use in memory database for users accounts! :-)
+
+## Q6: Not sure. No parameters checks? Two methods better than one?
+
+* Because it is javascript I can imagine that some unexpected behaviour can happen. Here some possible outcomes:
+- balances could became NaN if amount missed
+- debit balance is always increased if isCredit missed
+* Could amount be negative? Probably not - so check needed
+* I would recommend two separate methods here - even while more code should be written two methods - code will be more expressive.
+
+## Q7: Query and fetch optimizations. Indexes. Temp tables/structures. Caching. Sharding and/or partitioning. Better data structures and/or schema. Materialized views, split reporting and key-value and etc.
+
+* Query optimizations usually simplest way and is the first thing that should be considered. Subqueries, unnessary joins, unnessary columns, wrong index usage and etc - are common query issues.
+ - Performance could be increased if some non database related techniques will be used such as pagination and parallel queries (sometimes if you have multiple replicas and want to move computation outside of the server).
+* Indexes are common way to resolve query performance - if there enough space and insert/update operations will not suffer. There could different index types and configurations for different tasks.
+* Temp tables/structures could be efficient if medium delays are not a big deal - so we can construct intermediate table for heavy queries - with there own indexes or if we need to reuse data.
+* Caching is a common solution especially for read by key requests when data is rarely changed. Sometimes it can be used for search requests and sometimes even for writes - but with caution. 
+There are many database engines that provides data caching and/or memory map for disk stored data. Memory map also can be provided by operation systems.
+ - If we deal with caching when database size is huge - we usually cache only recent or frequently accessed data. Techniques like LRU cache can be used for example.
+* Splitting data between multiple machines is a natural and proven to be a very efficient way to increase query performance. However it is sometimes very difficult to support and there usage is very much relateson context:
+ - Account access could be sharded between nodes by account id. But it's became very difficult to search users by particular properties.
+ - We can partition data by date periods so recent entries could be accessed faster. But if we want do get data across long periods it can be problematic.
+* Sometimes data structures or schema that we chosen when we first created our database works bad when database grows, some examples are:
+ - Single table for all data
+ - Wrong types to store string data
+ - Saving huge binary data in database
+* Sometimes it worth to use different storages for data that is accessed by keys or frequently accessed (operative data) and data that is used for reporting or heavy search requests. 
+Consistency is a usual issue in this aproach but it has many advances:
+ - Operative data usually could be sharded and/or cached
+ - Different storage types and engines could be used: 
+   - columnar databases for reporting and analytics 
+   - search engines like elasticsearch to search by arbitrary properties
+   - in-memory storages like Redis to cache (or even sometimes to store data)
+
+## Q8: 
 </xmp>
 
 <script src="./strapdown.js"></script>
