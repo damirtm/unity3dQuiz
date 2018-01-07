@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<title>Unity Finland Developer Quiz</title>
+
+<xmp theme="united" style="display:none;">
+# Damir Timurshin's answers to Unity Finland - Developer Quiz
+
+## Q1: Usually sumB would be better because of lower count of operations, but might work bad on some processor architectures. sumA probably works better with processor cache, but I'm not sure.
+
+I expect that sumA will have 4 times more loop jumps and comparisions.
+I've verified it by exploring compiler output on x86-64 architecture (https://godbolt.org/g/9QzUGt). 
+It easy to see that sumB requires 4 data registers to store sum accumulators so if processor does have less - there will be constant spilling/filling.
+I would expect that sumA will work better with a processor cache - cache will be warmed up faster because of switching x and y variables against a common way of walking through a two dimentional array.
+Hovewer I'm not sure about it and going to refresh my knowledge. :-) Just to mention, I'm not a C++ developer, never worked with it, so I don't know how exactly compiller works.
+
+## Chapter 2
+
+Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut
+aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse
+cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in
+culpa qui officia deserunt mollit anim id est laborum.
+</xmp>
+
+<script src="http://strapdownjs.com/v/0.2/strapdown.js"></script>
+</html>
